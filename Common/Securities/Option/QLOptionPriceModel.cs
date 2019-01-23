@@ -1,11 +1,11 @@
 ﻿/*
  * QUANTCONNECT.COM - Democratizing Finance, Empowering Individuals.
  * Lean Algorithmic Trading Engine v2.0. Copyright 2014 QuantConnect Corporation.
- * 
- * Licensed under the Apache License, Version 2.0 (the "License"); 
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -22,18 +22,38 @@ using QLNet;
 namespace QuantConnect.Securities.Option
 {
     using Logging;
-    using PricingEngineFunc = Func<GeneralizedBlackScholesProcess, IPricingEngine>;
-    using PricingEngineFuncEx = Func<Symbol, GeneralizedBlackScholesProcess, IPricingEngine>;
 
     /// <summary>
-    /// Provides QuantLib(QL) implementation of <see cref="IOptionPriceModel"/> to support major option pricing models, available in QL. 
+    /// Creates the <see cref="IPricingEngine"/> to estimate the specified process
     /// </summary>
-    class QLOptionPriceModel : IOptionPriceModel
+    public delegate IPricingEngine PricingEngineFunc(GeneralizedBlackScholesProcess process);
+
+    /// <summary>
+    /// Creates the <see cref="IPricingEngine"/> to estimate the specified process
+    /// </summary>
+    public delegate IPricingEngine PricingEngineFuncEx(Symbol symbol, GeneralizedBlackScholesProcess process);
+
+    /// <summary>
+    /// Creates an <see cref="AmericanExercise"/> or <see cref="EuropeanExercise"/> depending on the pricing engine and symbol
+    /// </summary>
+    public delegate Exercise ExerciseFunc(Symbol symbol, DateTime settlementDate, DateTime maturityDate);
+
+    /// <summary>
+    /// Creates a <see cref="StrikedTypePayoff"/>, such as a <see cref="PlainVanillaPayoff"/>
+    /// </summary>
+    public delegate StrikedTypePayoff PayoffFunc(Symbol symbol, OptionContract contract);
+
+    /// <summary>
+    /// Provides QuantLib(QL) implementation of <see cref="IOptionPriceModel"/> to support major option pricing models, available in QL.
+    /// </summary>
+    public class QLOptionPriceModel : IOptionPriceModel
     {
+        private readonly PayoffFunc _payoffFunc;
         private readonly IQLUnderlyingVolatilityEstimator _underlyingVolEstimator;
         private readonly IQLRiskFreeRateEstimator _riskFreeRateEstimator;
         private readonly IQLDividendYieldEstimator _dividendYieldEstimator;
         private readonly PricingEngineFuncEx _pricingEngineFunc;
+        private readonly ExerciseFunc _exerciseFunc;
 
         /// <summary>
         /// When enabled, approximates Greeks if corresponding pricing model didn't calculate exact numbers.
@@ -48,13 +68,25 @@ namespace QuantConnect.Securities.Option
         /// <param name="underlyingVolEstimator">The underlying volatility estimator</param>
         /// <param name="riskFreeRateEstimator">The risk free rate estimator</param>
         /// <param name="dividendYieldEstimator">The underlying dividend yield estimator</param>
-        public QLOptionPriceModel(PricingEngineFunc pricingEngineFunc, IQLUnderlyingVolatilityEstimator underlyingVolEstimator, IQLRiskFreeRateEstimator riskFreeRateEstimator, IQLDividendYieldEstimator dividendYieldEstimator)
+        /// <param name="exerciseFunc">Optional exercise func for defining american or european</param>
+        /// <param name="payoffFunc">Optional payoff func for defining the type of payoff to model</param>
+        public QLOptionPriceModel(PricingEngineFunc pricingEngineFunc,
+            IQLUnderlyingVolatilityEstimator underlyingVolEstimator,
+            IQLRiskFreeRateEstimator riskFreeRateEstimator,
+            IQLDividendYieldEstimator dividendYieldEstimator,
+            ExerciseFunc exerciseFunc = null,
+            PayoffFunc payoffFunc = null
+            )
         {
             _pricingEngineFunc = (option, process) => pricingEngineFunc(process);
             _underlyingVolEstimator = underlyingVolEstimator ?? new ConstantQLUnderlyingVolatilityEstimator();
-            _riskFreeRateEstimator = riskFreeRateEstimator ?? new ConstantQLRiskFreeRateEstimator();
-            _dividendYieldEstimator = dividendYieldEstimator ?? new ConstantQLDividendYieldEstimator();
+            _riskFreeRateEstimator = riskFreeRateEstimator ?? new ConstantQLRiskFreeRateEstimator(OptionPriceModels.DefaultRiskFreeRate);
+            _dividendYieldEstimator = dividendYieldEstimator ?? new ConstantQLDividendYieldEstimator(OptionPriceModels.DefaultDividendRate);
+            // odds is the model is most likely european
+            _exerciseFunc = exerciseFunc ?? OptionPriceModels.EuropeanExercise;
+            _payoffFunc = payoffFunc ?? OptionPriceModels.PlainVanillaPayoff;
         }
+
         /// <summary>
         /// Method constructs QuantLib option price model with necessary estimators of underlying volatility, risk free rate, and underlying dividend yield
         /// </summary>
@@ -62,12 +94,24 @@ namespace QuantConnect.Securities.Option
         /// <param name="underlyingVolEstimator">The underlying volatility estimator</param>
         /// <param name="riskFreeRateEstimator">The risk free rate estimator</param>
         /// <param name="dividendYieldEstimator">The underlying dividend yield estimator</param>
-        public QLOptionPriceModel(PricingEngineFuncEx pricingEngineFunc, IQLUnderlyingVolatilityEstimator underlyingVolEstimator, IQLRiskFreeRateEstimator riskFreeRateEstimator, IQLDividendYieldEstimator dividendYieldEstimator)
+        /// <param name="exerciseFunc">Optional exercise func for defining american or european</param>
+        /// <param name="payoffFunc">Optional payoff func for defining the type of payoff to model</param>
+        public QLOptionPriceModel(PricingEngineFuncEx pricingEngineFunc,
+            IQLUnderlyingVolatilityEstimator underlyingVolEstimator,
+            IQLRiskFreeRateEstimator riskFreeRateEstimator,
+            IQLDividendYieldEstimator dividendYieldEstimator,
+            ExerciseFunc exerciseFunc = null,
+            PayoffFunc payoffFunc = null
+            )
         {
             _pricingEngineFunc = pricingEngineFunc;
+            _exerciseFunc = exerciseFunc;
             _underlyingVolEstimator = underlyingVolEstimator ?? new ConstantQLUnderlyingVolatilityEstimator();
-            _riskFreeRateEstimator = riskFreeRateEstimator ?? new ConstantQLRiskFreeRateEstimator();
-            _dividendYieldEstimator = dividendYieldEstimator ?? new ConstantQLDividendYieldEstimator();
+            _riskFreeRateEstimator = riskFreeRateEstimator ?? new ConstantQLRiskFreeRateEstimator(OptionPriceModels.DefaultRiskFreeRate);
+            _dividendYieldEstimator = dividendYieldEstimator ?? new ConstantQLDividendYieldEstimator(OptionPriceModels.DefaultDividendRate);
+            // odds is the model is most likely european
+            _exerciseFunc = exerciseFunc ?? OptionPriceModels.EuropeanExercise;
+            _payoffFunc = payoffFunc ?? OptionPriceModels.PlainVanillaPayoff;
         }
 
         /// <summary>
@@ -103,12 +147,11 @@ namespace QuantConnect.Securities.Option
 
                 // preparing stochastic process and payoff functions
                 var stochasticProcess = new BlackScholesMertonProcess(new Handle<Quote>(underlyingQuoteValue), dividendYield, riskFreeRate, underlyingVol);
-                var payoff = new PlainVanillaPayoff(contract.Right == OptionRight.Call ? QLNet.Option.Type.Call : QLNet.Option.Type.Put, (double)contract.Strike);
+                var payoff = _payoffFunc(security.Symbol, contract);
 
                 // creating option QL object
-                var option = contract.Symbol.ID.OptionStyle == OptionStyle.American ?
-                            new VanillaOption(payoff, new AmericanExercise(settlementDate, maturityDate)) :
-                            new VanillaOption(payoff, new EuropeanExercise(maturityDate));
+                var exercise = _exerciseFunc(security.Symbol, settlementDate, maturityDate);
+                var option = new VanillaOption(payoff, exercise);
 
                 Settings.setEvaluationDate(settlementDate);
 
@@ -246,6 +289,16 @@ namespace QuantConnect.Securities.Option
                 Log.Debug("QLOptionPriceModel.EvaluateOption() error: " + err.Message);
                 return 0.0;
             }
+        }
+
+        public static QLNet.Option.Type GetType(OptionRight right)
+        {
+            if (right == OptionRight.Call)
+            {
+                return QLNet.Option.Type.Call;
+            }
+
+            return QLNet.Option.Type.Put;
         }
     }
 }
