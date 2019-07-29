@@ -949,7 +949,7 @@ namespace QuantConnect.Algorithm
         {
             if (_locked)
             {
-                throw new Exception("Algorithm.SetTimeZone(): Cannot change time zone after algorithm running.");
+                throw new InvalidOperationException("Algorithm.SetTimeZone(): Cannot change time zone after algorithm running.");
             }
 
             if (timeZone == null) throw new ArgumentNullException("timeZone");
@@ -1160,7 +1160,7 @@ namespace QuantConnect.Algorithm
             }
             else
             {
-                throw new Exception("Algorithm.SetCash(): Cannot change cash available after algorithm initialized.");
+                throw new InvalidOperationException("Algorithm.SetCash(): Cannot change cash available after algorithm initialized.");
             }
         }
 
@@ -1178,7 +1178,7 @@ namespace QuantConnect.Algorithm
             }
             else
             {
-                throw new Exception("Algorithm.SetCash(): Cannot change cash available after algorithm initialized.");
+                throw new InvalidOperationException("Algorithm.SetCash(): Cannot change cash available after algorithm initialized.");
             }
         }
 
@@ -1206,7 +1206,7 @@ namespace QuantConnect.Algorithm
             }
             catch (Exception err)
             {
-                throw new Exception("Date Invalid: " + err.Message);
+                throw new ArgumentException($"Date Invalid: {err.Message}");
             }
         }
 
@@ -1231,7 +1231,7 @@ namespace QuantConnect.Algorithm
             }
             catch (Exception err)
             {
-                throw new Exception("Date Invalid: " + err.Message);
+                throw new ArgumentException($"Date Invalid: {err.Message}");
             }
         }
 
@@ -1263,14 +1263,14 @@ namespace QuantConnect.Algorithm
             //1. Check range;
             if (start < (new DateTime(1900, 01, 01)))
             {
-                throw new Exception("Please select a start date after January 1st, 1900.");
+                throw new ArgumentOutOfRangeException(nameof(start), "Please select a start date after January 1st, 1900.");
             }
 
             //2. Check future date
             var todayInAlgorithmTimeZone = DateTime.UtcNow.ConvertFromUtc(TimeZone).Date;
             if (start > todayInAlgorithmTimeZone)
             {
-                throw new Exception("Please select start date less than today");
+                throw new ArgumentOutOfRangeException(nameof(start), "Please select start date less than today");
             }
 
             //3. Check end date greater:
@@ -1278,7 +1278,7 @@ namespace QuantConnect.Algorithm
             {
                 if (start > _endDate)
                 {
-                    throw new Exception("Please select start date less than end date.");
+                    throw new ArgumentOutOfRangeException(nameof(start), "Please select start date less than end date.");
                 }
             }
 
@@ -1294,7 +1294,7 @@ namespace QuantConnect.Algorithm
             }
             else
             {
-                throw new Exception("Algorithm.SetStartDate(): Cannot change start date after algorithm initialized.");
+                throw new InvalidOperationException("Algorithm.SetStartDate(): Cannot change start date after algorithm initialized.");
             }
         }
 
@@ -1321,7 +1321,7 @@ namespace QuantConnect.Algorithm
             {
                 if (end < _startDate)
                 {
-                    throw new Exception("Please select end date greater than start date.");
+                    throw new ArgumentOutOfRangeException(nameof(end), "Please select end date greater than start date.");
                 }
             }
 
@@ -1335,7 +1335,7 @@ namespace QuantConnect.Algorithm
             }
             else
             {
-                throw new Exception("Algorithm.SetEndDate(): Cannot change end date after algorithm initialized.");
+                throw new InvalidOperationException("Algorithm.SetEndDate(): Cannot change end date after algorithm initialized.");
             }
         }
 
@@ -1441,7 +1441,7 @@ namespace QuantConnect.Algorithm
                 {
                     if (!BrokerageModel.DefaultMarkets.TryGetValue(securityType, out market))
                     {
-                        throw new Exception("No default market set for security type: " + securityType);
+                        throw new KeyNotFoundException($"No default market set for security type: {securityType}");
                     }
                 }
 
@@ -1496,7 +1496,7 @@ namespace QuantConnect.Algorithm
             {
                 if (!BrokerageModel.DefaultMarkets.TryGetValue(SecurityType.Option, out market))
                 {
-                    throw new Exception("No default market set for security type: " + SecurityType.Option);
+                    throw new KeyNotFoundException($"No default market set for security type: {SecurityType.Option}");
                 }
             }
 
@@ -1546,7 +1546,7 @@ namespace QuantConnect.Algorithm
             {
                 if (!BrokerageModel.DefaultMarkets.TryGetValue(SecurityType.Future, out market))
                 {
-                    throw new Exception("No default market set for security type: " + SecurityType.Future);
+                    throw new KeyNotFoundException($"No default market set for security type: {SecurityType.Future}");
                 }
             }
 
@@ -1629,8 +1629,10 @@ namespace QuantConnect.Algorithm
                 {
                     // We check the "locked" flag here because during initialization we need to load existing open orders and holdings from brokerages.
                     // There is no data streaming yet, so it is safe to change the data normalization mode to Raw.
-                    throw new ArgumentException($"The underlying equity asset ({underlying.Value}) is set to {dataNormalizationMode}, " +
-                                                "please change this to DataNormalizationMode.Raw with the SetDataNormalization() method");
+                    throw new ArgumentException($"The underlying equity asset ({underlying.Value}) is set to " +
+                        $"{dataNormalizationMode}, please change this to DataNormalizationMode.Raw with the " +
+                        "SetDataNormalization() method"
+                    );
                 }
             }
             underlyingConfigs.SetDataNormalizationMode(DataNormalizationMode.Raw);
@@ -2085,7 +2087,7 @@ namespace QuantConnect.Algorithm
         {
             if (historyProvider == null)
             {
-                throw new ArgumentNullException("Algorithm.SetHistoryProvider(): Historical data provider cannot be null.");
+                throw new ArgumentNullException(nameof(historyProvider), "Algorithm.SetHistoryProvider(): Historical data provider cannot be null.");
             }
             HistoryProvider = historyProvider;
         }
@@ -2098,7 +2100,7 @@ namespace QuantConnect.Algorithm
         {
             if (exception == null)
             {
-                throw new ArgumentNullException("Algorithm.SetRunTimeError(): Algorithm.RunTimeError cannot be set to null.");
+                throw new ArgumentNullException(nameof(exception), "Algorithm.SetRunTimeError(): Algorithm.RunTimeError cannot be set to null.");
             }
 
             RunTimeError = exception;

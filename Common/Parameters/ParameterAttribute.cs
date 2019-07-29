@@ -91,7 +91,7 @@ namespace QuantConnect.Parameters
                 if (propertyInfo != null && !propertyInfo.CanWrite)
                 {
                     var message = string.Format("The specified property is read only: {0}.{1}", propertyInfo.DeclaringType, propertyInfo.Name);
-                    throw new Exception(message);
+                    throw new InvalidOperationException(message);
                 }
 
                 // resolve the member type
