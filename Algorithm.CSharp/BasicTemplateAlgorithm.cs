@@ -15,6 +15,7 @@
 
 using System.Collections.Generic;
 using QuantConnect.Data;
+using QuantConnect.Data.UniverseSelection;
 using QuantConnect.Interfaces;
 
 namespace QuantConnect.Algorithm.CSharp
@@ -60,6 +61,11 @@ namespace QuantConnect.Algorithm.CSharp
                 SetHoldings(_spy, 1);
                 Debug("Purchased Stock");
             }
+        }
+
+        public override void OnSecuritiesChanged(SecurityChanges changes)
+        {
+            Log($"CHANGES:{changes}");
         }
 
         /// <summary>
