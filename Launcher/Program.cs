@@ -42,6 +42,8 @@ namespace QuantConnect.Lean.Launcher
 
         static void Main(string[] args)
         {
+            var start = DateTime.UtcNow;
+
             //Initialize:
             var mode = "RELEASE";
             #if DEBUG
@@ -103,6 +105,12 @@ namespace QuantConnect.Lean.Launcher
                 Log.Error("Engine.Main(): Failed to load library: " + compositionException);
                 throw;
             }
+
+            var end = DateTime.UtcNow;
+            var elapsed = end - start;
+            Log.Error($"COMPOSER INITIALIZATION/RESOLUTION TIME: {elapsed.TotalMilliseconds:0.00}ms");
+
+            return;
 
             // if the job version doesn't match this instance version then we can't process it
             // we also don't want to reprocess redelivered jobs
