@@ -111,7 +111,7 @@ namespace QuantConnect.Api
 
                 responseContent = restsharpResponse.Content;
                 result = JsonConvert.DeserializeObject<T>(responseContent);
-                if (!result.Success)
+                if (result?.Success != true)
                 {
                     //result;
                     return false;
